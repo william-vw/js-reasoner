@@ -1,34 +1,93 @@
 class Reasoner {
 
     dataset;
-    ruleClauses = {};
+
+    rules;
+    clauses;
 
     // (1) assuming that this dataset does not contain any data initially
     // else a saturation operation would be appropriate to initialize the reasoner
 
     // (2) currently assuming that rules are not added after initialization
 
-    constructor(dataset, ruleset) {
+    constructor(dataset, rules) {
         this.dataset = dataset;
 
-
+        this.rules = rules;
+        this.clauses = new SingleIndexStatementSet(TermPos.P);
+        for (var rule of rules) {
+            for (var clause of rule.body)
+                this.clauses.add(clause);
+        }
     }
 
-    infer(item) {
+    infer(stmt) {
+        this.clauses.print();
 
+        const matches = this.clauses.findMatches(stmt);
+        for (var clause of matches) {
+            console.log("match:", clause);
+            const rule = clause.rule;
+
+            if (this.unify(stmt, clause)) {
+                this.matchClauses(rule, clause);
+            }
+        }
+    }
+
+    // (private)
+    matchBody(rule, clause) {
+        const remaining = rule.body.slice();
+        remaining.splice(clause.pos, 1);
+
+        return this.matchClauses(rule, remaining);
+    }
+
+    matchClauses(rule, clauses) {
+        if (clauses.length == 0) {
+            fireRule(rule);
+        }
+
+        // TODO order based on selectivity
+
+        var next = remaining.splice(0, 1);
+        if (this.dataset.findMatches(next)) {
+            // TODO binding stack
+
+            return this.matchClauses(rule, clauses);
+        }
+    }
+
+    fireRule(rule) {
+        // ...
+    }
+
+    // (private)
+    // TODO
+    unify(stmt, clause) {
+        return true;
     }
 }
 
-class RuleClauseSet {
+class Rule {
 
-    set;
+    body;
+    head;
 
-    constructor(set) {
-        this.set = set;
+    constructor(body, head) {
+        this.body = body;
+        for (var i = 0; i < body.length; i++) {
+            var clause = body[i];
+            clause.rule = this;
+            clause.pos = i;
+        }
+
+        this.head = head;
+        head.forEach(c => c.rule = this);
     }
 
-    add(rule) {
-        console.error("must implement the RuleClauseIndex class");
+    toString() {
+        return this.body.map(e => e + "").join(" ") + "\n  =>\n" + this.head.map(e => e + "");
     }
 }
 
@@ -101,6 +160,7 @@ class SingleIndexStatementSet extends StatementSet {
         return false;
     }
 
+    // (private)
     getIndex(stmt) {
         var indexTerm = stmt.get(this.index);
         return (indexTerm.isVariable() ? SingleIndexStatementSet.varIndex : indexTerm.value);
@@ -126,7 +186,7 @@ class SingleIndexStatementSet extends StatementSet {
 
     iterate(term) {
         var iterators = [];
-        
+
         var found = this.stmts[term];
         if (found)
             iterators.push(found.values());
@@ -145,21 +205,22 @@ class SingleIndexStatementSet extends StatementSet {
         return new NestedIterator(allIterators);
     }
 
-    [Symbol.iterator] () {
+    [Symbol.iterator]() {
         return this.iterateAll();
     }
 
     print() {
         Object.entries(this.stmts).forEach(e => {
-            const index = e[0];
-            const elements = e[1].map(v => v.toString()).join(", ");
+            const index = (e[0] ==
+                SingleIndexStatementSet.varIndex ? "<wildcard>" : e[0]);
+            const elements = e[1].map(v => v.toString()).join("\n");
 
             console.log(index, ":", elements);
         });
     }
 }
 
-class CustomIterator {
+class DoneIterator {
 
     nextMatch = false;
 
@@ -171,20 +232,20 @@ class CustomIterator {
         // don't actually know at this point whether this is the last iteration
         this.getNext();
         // only last one if we cannot find a next match
-        // JS ignores entries with done=true XD
+        // .. turns out JS simply ignores entries with done=true in for .. of
         const done = false; // (this.nextMatch === false);
 
         ret = { value: ret.value, done: done }
         return ret;
     }
 
-    // private
+    // (private)
     getNext() {
-        console.error("must implement the CustomIterator class");
+        console.error("must implement the DoneIterator class");
     }
 }
 
-class NestedIterator extends CustomIterator {
+class NestedIterator extends DoneIterator {
 
     iterators;
 
@@ -197,10 +258,10 @@ class NestedIterator extends CustomIterator {
         this.getNext();
     }
 
-    // private
+    // (private)
     getNext() {
-        // this code is not very intuitive but it's JS' fault!
-        // an iterator can return done=true either with the last element, 
+        // this code is not very intuitive but it's JS' fault :(
+        // technically, an iterator can return done=true either with the last element, 
         // or after the last iteration (with undefined value); 
         // an empty array will always do the latter
 
@@ -230,19 +291,20 @@ class NestedIterator extends CustomIterator {
         }
     }
 
+    // (private)
     nextIterator() {
         this.idx++;
         this.getNext();
     }
 }
 
-class WrappedIterator extends CustomIterator {
+class WrappedIterator extends DoneIterator {
 
     iterator;
 
     constructor(iterator) {
         super();
-        
+
         this.iterator = iterator;
     }
 }
@@ -250,15 +312,18 @@ class WrappedIterator extends CustomIterator {
 class FindMatchesIterator extends WrappedIterator {
 
     stmt;
+    ignore;
 
-    constructor(iterator, stmt) {
+    constructor(iterator, stmt, ignore) {
         super(iterator);
 
         this.stmt = stmt;
+        this.ignore = ignore;
 
         this.getNext();
     }
 
+    // (private)
     getNext() {
         while (true) {
             var result = this.iterator.next();
@@ -277,6 +342,17 @@ class FindMatchesIterator extends WrappedIterator {
         }
 
         this.nextMatch = false;
+    }
+
+    equals(stmt, stmt2) {
+        for (var i = TermPos.S; i <= TermPos.O; i++) {
+            if (i != this.ignore) {
+                if (!stmt.get(i).equals(stmt2.get(i), exact))
+                    return false;
+            }
+        }
+
+        return true;
     }
 }
 
@@ -310,14 +386,24 @@ class Statement {
         }
     }
 
-    equals(otherStmt, exact) {
-        return this.s.equals(otherStmt.s, exact) &&
-            this.p.equals(otherStmt.p, exact) &&
-            this.o.equals(otherStmt.o, exact);
+    equals(stmt2, exact) {
+        return this.s.equals(stmt2.s, exact) &&
+            this.p.equals(stmt2.p, exact) &&
+            this.o.equals(stmt2.o, exact);
     }
 
     toString() {
-        return `${this.s} ${this.p} ${this.o}`;
+        return `${this.s} ${this.p} ${this.o} .`;
+    }
+}
+
+class Clause extends Statement {
+
+    rule;
+    pos;
+
+    constructor(s, p, o) {
+        super(s, p, o);
     }
 }
 
@@ -394,8 +480,8 @@ class Variable extends Term {
 
 class TermTypes {
 
-    static CONSTANT = 1;
-    static VARIABLE = 2;
+    static CONSTANT = "CNST";
+    static VARIABLE = "VAR";
 }
 
 class TermPos {

@@ -24,34 +24,66 @@
         //     console.log(ni.next());
 
         // - dataset
+
+        // var dataset = new SingleIndexStatementSet(TermPos.P);
+        // dataset.add(new Statement(new Constant("a"), new Constant("p"), new Constant("b")));
+        // dataset.add(new Statement(new Constant("c"), new Constant("p"), new Constant("d")));
+        // dataset.add(new Statement(new Constant("e"), new Constant("p2"), new Constant("f")));
+        // dataset.add(new Statement(new Constant("g"), new Constant("p3"), new Constant("h")));
+        // dataset.add(new Statement(new Constant("i"), new Constant("p3"), new Constant("j")));
+
+        // dataset.add(new Statement(new Constant("g"), new Variable("v"), new Constant("h")));
+        // dataset.add(new Statement(new Constant("i"), new Variable("v2"), new Constant("j")));
+
+        // // dataset.print();
+
+        // // for (var stmt of dataset)
+        // //     console.log(stmt + "");
+
+        // var needle = new Statement(new Constant("i"), new Constant("p3"), new Constant("j"));
+        // var results = dataset.findMatches(needle);
+        // console.log(needle + ":");
+        // for (result of results)
+        //     console.log(result + "");
+
+        // console.log("\n");
+
+        // var needle = new Statement(new Constant("g"), new Variable("v3"), new Constant("h"));
+        // var results = dataset.findMatches(needle);
+        // console.log(needle + ":");
+        // for (result of results)
+        //     console.log(result + "");
+
+        // - rules
+
         var dataset = new SingleIndexStatementSet(TermPos.P);
-        dataset.add(new Statement(new Constant("a"), new Constant("p"), new Constant("b")));
-        dataset.add(new Statement(new Constant("c"), new Constant("p"), new Constant("d")));
-        dataset.add(new Statement(new Constant("e"), new Constant("p2"), new Constant("f")));
-        dataset.add(new Statement(new Constant("g"), new Constant("p3"), new Constant("h")));
-        dataset.add(new Statement(new Constant("i"), new Constant("p3"), new Constant("j")));
+        // dataset.add(new Statement(new Constant("a"), new Constant("p"), new Constant("b")));
+        // dataset.add(new Statement(new Constant("c"), new Constant("p"), new Constant("d")));
+        // dataset.add(new Statement(new Constant("e"), new Constant("p2"), new Constant("f")));
+        // dataset.add(new Statement(new Constant("g"), new Constant("p3"), new Constant("h")));
+        // dataset.add(new Statement(new Constant("i"), new Constant("p3"), new Constant("j")));
 
-        dataset.add(new Statement(new Constant("g"), new Variable("v"), new Constant("h")));
-        dataset.add(new Statement(new Constant("i"), new Variable("v2"), new Constant("j")));
+        var rule = new Rule([
+            new Clause(new Constant("a"), new Variable("p"), new Constant("b")),
+            new Clause(new Variable("x"), new Constant("p"), new Constant("q"))
+        ], [
+            new Clause(new Variable("x"), new Constant("p2"), new Constant("b2"))
+        ]);
 
-        // dataset.print();
+        var reasoner = new Reasoner(dataset, [ rule ]);
 
-        // for (var stmt of dataset)
-        //     console.log(stmt + "");
+        var stmt = new Statement(new Constant("a"), new Constant("p"), new Constant("q"));
+        reasoner.infer(stmt);
 
-        var needle = new Statement(new Constant("i"), new Constant("p3"), new Constant("j"));
-        var results = dataset.findMatches(needle);
-        console.log(needle + ":");
-        for (result of results)
-            console.log(result + "");
+        // var dataset = new SingleIndexStatementSet(TermPos.P);
+        // dataset.add(new Statement(new Constant("a"), new Variable("p"), new Constant("b")));
+        // dataset.add(new Statement(new Variable("x"), new Constant("p"), new Constant("q")));
 
-        console.log("\n");
-
-        var needle = new Statement(new Constant("g"), new Variable("v3"), new Constant("h"));
-        var results = dataset.findMatches(needle);
-        console.log(needle + ":");
-        for (result of results)
-            console.log(result + "");
+        // var needle = new Statement(new Constant("a"), new Constant("p"), new Constant("q"));
+        // var results = dataset.findMatches(needle);
+        // console.log(needle + ":");
+        // for (result of results)
+        //     console.log(result + "");
 
     </script>
 
