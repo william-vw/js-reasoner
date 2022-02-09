@@ -54,11 +54,15 @@ class StatementSet {
     findMatches(stmt) {
         console.error("must implement the StatementSet class");
     }
+
+    print() {
+        console.error("must implement the StatementSet class");
+    }
 }
 
 class SingleIndexStatementSet extends StatementSet {
 
-    static varIndex = null;
+    static varIndex = "<null>";
 
     index;
     stmts = {};
@@ -69,18 +73,19 @@ class SingleIndexStatementSet extends StatementSet {
     }
 
     add(stmt) {
-        const indexTerm = this.getIndexTerm(stmt);
-        var found = this.stmts[indexTerm];
+        const index = this.getIndex(stmt);
+        var found = this.stmts[index];
         if (found === undefined) {
             found = [];
-            this.stmts[indexTerm] = found;
+            this.stmts[index] = found;
         }
         found.push(stmt);
     }
 
+    // (exact match)
     remove(stmt) {
-        const indexTerm = this.getIndexTerm(stmt);
-        var found = this.stmts[indexTerm];
+        const index = this.getIndex(stmt);
+        var found = this.stmts[index];
         if (found !== undefined) {
 
             for (var i = 0; i < found.length; i++) {
@@ -96,10 +101,12 @@ class SingleIndexStatementSet extends StatementSet {
         return false;
     }
 
-    getIndexTerm(stmt) {
+    getIndex(stmt) {
         var indexTerm = stmt.get(this.index);
-        return (indexTerm.isVariable() ? this.varIndex : indexTerm);
+        return (indexTerm.isVariable() ? SingleIndexStatementSet.varIndex : indexTerm.value);
     }
+
+    // (non-exact matches)
 
     findMatches(stmt) {
         const indexTerm = stmt.get(this.index);
@@ -108,27 +115,47 @@ class SingleIndexStatementSet extends StatementSet {
         if (indexTerm.isVariable())
             iterator = this.iterateAll();
         else
-            iterator = this.iterate(indexTerm);
+            iterator = this.iterate(indexTerm.value);
 
+        const wrapper = new FindMatchesIterator(iterator, stmt);
+
+        const ret = {};
+        ret[Symbol.iterator] = () => wrapper;
         return ret;
     }
 
     iterate(term) {
         var iterators = [];
-
-        var found = this.stmts[indexTerm];
+        
+        var found = this.stmts[term];
         if (found)
             iterators.push(found.values());
 
-        found = this.stmts[this.varIndex];
+        found = this.stmts[SingleIndexStatementSet.varIndex];
         if (found)
             iterators.push(found.values());
 
-        return new NestedIterator(iterators.values());
+        return new NestedIterator(iterators);
     }
 
     iterateAll() {
-        return new NestedIterator(this.stmts.values());
+        var allEntries = Object.values(this.stmts);
+        var allIterators = allEntries.map(a => a.values());
+
+        return new NestedIterator(allIterators);
+    }
+
+    [Symbol.iterator] () {
+        return this.iterateAll();
+    }
+
+    print() {
+        Object.entries(this.stmts).forEach(e => {
+            const index = e[0];
+            const elements = e[1].map(v => v.toString()).join(", ");
+
+            console.log(index, ":", elements);
+        });
     }
 }
 
@@ -137,16 +164,18 @@ class CustomIterator {
     nextMatch = false;
 
     next() {
-        const ret = this.nextMatch;
+        var ret = this.nextMatch;
         if (!ret)
             return { done: true };
 
         // don't actually know at this point whether this is the last iteration
         this.getNext();
         // only last one if we cannot find a next match
-        const done = (this.nextMatch === false);
+        // JS ignores entries with done=true XD
+        const done = false; // (this.nextMatch === false);
 
-        return { value: ret.value, done: done };
+        ret = { value: ret.value, done: done }
+        return ret;
     }
 
     // private
@@ -159,55 +188,51 @@ class NestedIterator extends CustomIterator {
 
     iterators;
 
-    current;
-    nextMatch = false;
+    idx = 0;
 
     constructor(iterators) {
-        this.iterators = iterators;
+        super();
 
+        this.iterators = iterators;
         this.getNext();
     }
 
     // private
     getNext() {
-        // initialize
-        if (this.current === undefined) {
-            this.current = this.iterators.next();
-            
-            // ("iterators" was empty array)
-            if (this.current.value === undefined)
-                return;
-        }
+        // this code is not very intuitive but it's JS' fault!
+        // an iterator can return done=true either with the last element, 
+        // or after the last iteration (with undefined value); 
+        // an empty array will always do the latter
 
-        // there's been a prior iteration
-        // and, that was the last one for that iterator
-        if (this.nextMatch !== false && this.nextMatch.done) {
-            // so, goto next iterator
-            this.nextIterator();
-        
-        } else {
-            // either first iteration, or prior iteration that was not last one
-            const ret = this.current.value.next();
+        // so we need to cover both these cases ..
+        if (this.idx < this.iterators.length) {
+            const iterator = this.iterators[this.idx];
 
-            // not an empty array
-            if (ret.value !== undefined) {
-                this.nextMatch = ret;
-
-            } else
-                // empty array, so goto next iterator
+            // there's been a prior iteration
+            // and, returned value was last one for that iterator
+            if (this.nextMatch !== false && this.nextMatch.done) {
+                // so, goto next iterator
                 this.nextIterator();
+
+            } else {
+                // either first iteration, or prior iteration that was not last one
+                const ret = iterator.next();
+
+                // in case done=true is only returned *after* last iteration
+                if (ret.value !== undefined) {
+                    this.nextMatch = ret;
+                } else
+                    this.nextIterator();
+            }
+
+        } else {
+            this.nextMatch = false;
         }
     }
 
     nextIterator() {
-        // no more iterators
-        if (this.current.done)
-            this.nextMatch = false;
-
-        else {
-            this.current = this.iterators.next();
-            this.getNext();
-        }
+        this.idx++;
+        this.getNext();
     }
 }
 
@@ -216,6 +241,8 @@ class WrappedIterator extends CustomIterator {
     iterator;
 
     constructor(iterator) {
+        super();
+        
         this.iterator = iterator;
     }
 }
@@ -223,10 +250,10 @@ class WrappedIterator extends CustomIterator {
 class FindMatchesIterator extends WrappedIterator {
 
     stmt;
-    nextMatch = false;
 
     constructor(iterator, stmt) {
-        this.iterator = iterator;
+        super(iterator);
+
         this.stmt = stmt;
 
         this.getNext();
@@ -235,7 +262,6 @@ class FindMatchesIterator extends WrappedIterator {
     getNext() {
         while (true) {
             var result = this.iterator.next();
-            // empty array
             if (result.value === undefined)
                 break;
 
@@ -289,6 +315,10 @@ class Statement {
             this.p.equals(otherStmt.p, exact) &&
             this.o.equals(otherStmt.o, exact);
     }
+
+    toString() {
+        return `${this.s} ${this.p} ${this.o}`;
+    }
 }
 
 class Term {
@@ -300,11 +330,11 @@ class Term {
     }
 
     isConstant() {
-        return type === TermTypes.CONSTANT;
+        return this.type === TermTypes.CONSTANT;
     }
 
     isVariable() {
-        return type === TermTypes.VARIABLE;
+        return this.type === TermTypes.VARIABLE;
     }
 
     equals(other, exact) {
@@ -329,7 +359,11 @@ class Constant extends Term {
         } else if (other.isVariable())
             return true;
 
-        return this.value === otherCnst.value;
+        return this.value === other.value;
+    }
+
+    toString() {
+        return this.value;
     }
 }
 
@@ -351,6 +385,10 @@ class Variable extends Term {
 
         } else
             return true;
+    }
+
+    toString() {
+        return "?" + this.name;
     }
 }
 

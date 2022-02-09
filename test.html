@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="reasoner.js"></script>
+    <script>
+        // - nested-iterator
+
+        // // (array iterators)
+        // // var it = ["a", "b"].values();
+        // // let e = it.next();
+        // // while (!e.done) {
+        // //     console.log(e);
+        // //     e = it.next();
+        // // }
+        // // console.log(e);
+
+        // var obj = { 1: [], 2: ["a", "b"], 3: [], 4: ["c", "d", "e"], 5: [] };
+        // var obj = { 1: [ "a" ] };
+        // var iterators = Object.values(obj).map(a => a.values());
+
+        // var ni = new NestedIterator(iterators);
+        // for (var i = 0; i < 6; i++)
+        //     console.log(ni.next());
+
+        // - dataset
+        var dataset = new SingleIndexStatementSet(TermPos.P);
+        dataset.add(new Statement(new Constant("a"), new Constant("p"), new Constant("b")));
+        dataset.add(new Statement(new Constant("c"), new Constant("p"), new Constant("d")));
+        dataset.add(new Statement(new Constant("e"), new Constant("p2"), new Constant("f")));
+        dataset.add(new Statement(new Constant("g"), new Constant("p3"), new Constant("h")));
+        dataset.add(new Statement(new Constant("i"), new Constant("p3"), new Constant("j")));
+
+        dataset.add(new Statement(new Constant("g"), new Variable("v"), new Constant("h")));
+        dataset.add(new Statement(new Constant("i"), new Variable("v2"), new Constant("j")));
+
+        // dataset.print();
+
+        // for (var stmt of dataset)
+        //     console.log(stmt + "");
+
+        var needle = new Statement(new Constant("i"), new Constant("p3"), new Constant("j"));
+        var results = dataset.findMatches(needle);
+        console.log(needle + ":");
+        for (result of results)
+            console.log(result + "");
+
+        console.log("\n");
+
+        var needle = new Statement(new Constant("g"), new Variable("v3"), new Constant("h"));
+        var results = dataset.findMatches(needle);
+        console.log(needle + ":");
+        for (result of results)
+            console.log(result + "");
+
+    </script>
+
+</head>
+
+</html>
