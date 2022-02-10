@@ -2,10 +2,12 @@ import { NestedIterator, FindMatchesIterator } from './iterator.js';
 
 class StatementSet {
 
-    constructor(stmts) {
-        if (stmts !== undefined) {
-            for (const stmt of stmts)
-                add(stmt);
+    reasoner;
+
+    constructor(reasoner) {
+        if (reasoner !== undefined) {
+            this.reasoner = reasoner;
+            reasoner.dataset = this;
         }
     }
 
@@ -28,6 +30,12 @@ class StatementSet {
     print() {
         console.error("must implement the StatementSet class");
     }
+
+    // (private)
+    onAdd(stmt) {
+        if (this.reasoner !== undefined)
+            this.reasoner.infer(stmt);
+    }
 }
 
 export class SingleIndexStatementSet extends StatementSet {
@@ -37,8 +45,8 @@ export class SingleIndexStatementSet extends StatementSet {
     index;
     stmts = {};
 
-    constructor(index, stmts) {
-        super(stmts);
+    constructor(index, reasoner) {
+        super(reasoner);
 
         this.index = index;
     }
@@ -51,6 +59,8 @@ export class SingleIndexStatementSet extends StatementSet {
             this.stmts[index] = found;
         }
         found.push(stmt);
+        
+        this.onAdd(stmt);
     }
 
     // (exact match)

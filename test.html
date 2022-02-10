@@ -82,15 +82,74 @@
 
         // -- reasoning
 
-        // (simple non-chaining inference)
-        
-        var dataset = new SingleIndexStatementSet(TermPos.P);
-        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
-        dataset.add(new Statement(new Constant("k1"), new Constant("p"), new Constant("l1")));
-        dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
-        dataset.add(new Statement(new Constant("l1"), new Constant("p2"), new Constant("m")));
+        // // (simple non-chaining inference)
 
-        const rule = new Rule([
+        // var dataset = new SingleIndexStatementSet(TermPos.P);
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
+        // dataset.add(new Statement(new Constant("k1"), new Constant("p"), new Constant("l1")));
+        // dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
+        // dataset.add(new Statement(new Constant("l1"), new Constant("p2"), new Constant("m")));
+
+        // const rule = new Rule([
+        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // var reasoner = new Reasoner([ rule ], dataset);
+
+        // const newStmt = new Statement(new Constant("m"), new Constant("p3"), new Constant("n"));
+        // reasoner.infer(newStmt);
+
+        // (simple chaining inference)
+
+        // var dataset = new SingleIndexStatementSet(TermPos.P);
+        // dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
+
+        // const rule1 = new Rule([
+        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m"))
+        // ], [
+        //     new Clause(new Variable("m"), new Constant("p3"), new Constant("n"))
+        // ]);
+
+        // const rule2 = new Rule([
+        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Clause(new Constant("test2"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // const rule3 = new Rule([
+        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // var reasoner = new Reasoner([rule1, rule2, rule3], dataset);
+
+        // const newStmt = new Statement(new Constant("k"), new Constant("p"), new Constant("l"));
+        // reasoner.infer(newStmt);
+
+        // ('proper' way of handling new statements in general)
+
+        const rule1 = new Rule([
+            new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+            new Clause(new Variable("l"), new Constant("p2"), new Variable("m"))
+        ], [
+            new Clause(new Variable("m"), new Constant("p3"), new Constant("n"))
+        ]);
+
+        const rule2 = new Rule([
+            new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        ], [
+            new Clause(new Constant("test2"), new Constant("type"), new Constant("success"))
+        ]);
+
+        const rule3 = new Rule([
             new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
             new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
             new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
@@ -98,10 +157,14 @@
             new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
         ]);
 
-        var reasoner = new Reasoner(dataset, [ rule ]);
+        var reasoner = new Reasoner([rule1, rule2, rule3]);
 
-        const newStmt = new Statement(new Constant("m"), new Constant("p3"), new Constant("n"));
-        reasoner.infer(newStmt);
+        var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
+        dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
+        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
+
+        console.log("dataset:");
+        dataset.print();
     </script>
 
 </head>

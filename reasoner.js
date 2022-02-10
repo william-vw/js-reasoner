@@ -13,10 +13,10 @@ export class Reasoner {
 
     // (2) currently assuming that rules are not added after initialization
 
-    constructor(dataset, rules) {
+    constructor(rules, dataset) {
+        this.rules = rules;
         this.dataset = dataset;
 
-        this.rules = rules;
         this.clauses = new SingleIndexStatementSet(TermPos.P);
         for (var rule of rules) {
             for (var clause of rule.body)
@@ -27,11 +27,13 @@ export class Reasoner {
     infer(stmt) {
         // this.clauses.print();
 
-        console.debug("infer:", stmt + "");
+        console.debug("infer for:", stmt + "");
         const matches = this.clauses.findMatches(stmt);
         for (var clause of matches) {
-            console.debug("clause match:", clause + "");
             const rule = clause.rule;
+
+            const descr = clause + " <> " + stmt + "\n(rule: " + rule + ")";
+            console.debug("clause match:", descr);
 
             const stack = new BindingStack(rule);
             stack.current().bind(clause, stmt);
@@ -39,6 +41,7 @@ export class Reasoner {
             console.debug("stack:", stack + "");
 
             const fired = this.matchBody(rule, clause, stack);
+            console.log("fired?", fired, "for", descr);
         }
     }
 
@@ -53,8 +56,7 @@ export class Reasoner {
     // (private)
     matchClauses(rule, clauses, stack) {
         if (clauses.length == 0) {
-            this.fireRule(rule, stack.current());
-            return true;
+            return this.fireRule(rule, stack.current());
         }
 
         // TODO order based on selectivity
@@ -65,32 +67,46 @@ export class Reasoner {
 
         console.debug("next clause:", next + "", "(grounded:", grounded + "", ")");
 
+        var anySuccess = false;
+
         const matches = this.dataset.findMatches(grounded);
         for (const match of matches) {
             console.debug("data match:", match + "", "(clause:", next + "", ")");
+            
             stack.windup();
             stack.current().bind(grounded, match);
             console.debug("stack:", stack + "");
 
             const success = this.matchClauses(rule, clauses.slice(), stack);
-            
+            anySuccess = anySuccess || success;
+
             stack.unwind();
         }
+
+        return anySuccess;
     }
 
     // (private)
     fireRule(rule, binding) {
         console.debug("fire rule!");
-        
+
+        var anySuccess = false;
+
         const inferences = rule.head.map(c => binding.ground(c));
         for (const inference of inferences) {
-            if (!this.dataset.contains(inference)) {
-                this.dataset.add(inference);
-                console.debug("add:", inference + "");
+            if (inference.includesVariables())
+                console.error("inferring variable statement:", inference + "");
+            else {
+                if (!this.dataset.contains(inference)) {
+                    console.debug("inferred new:", inference + "");
+                    this.dataset.add(inference);
 
-                this.infer(inference);
-            }    
+                    anySuccess = true;
+                }
+            }
         }
+
+        return anySuccess;
     }
 }
 
@@ -230,7 +246,7 @@ export class Rule {
     }
 
     toString() {
-        return this.body.map(e => e + "").join(" ") + "\n  =>\n" + this.head.map(e => e + "");
+        return "{" + this.body.map(e => e + "").join(" ") + " } => { " + this.head.map(e => e + "") + " }";
     }
 }
 
@@ -269,7 +285,7 @@ class RuleVisitor {
         if (term.isVariable()) {
             if (!(term.name in this.varMap))
                 this.varMap[term.name] = this.numVars++;
-            
+
             term.idx = this.varMap[term.name];
         }
     }
