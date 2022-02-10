@@ -2,8 +2,13 @@
 <html>
 
 <head>
-    <script src="reasoner.js"></script>
-    <script>
+    <script src="reasoner.js" type="module"></script>
+    <script type="module">
+        import { Statement, Constant, Variable, TermPos } from './statement.js';
+        import { NestedIterator } from './iterator.js';
+        import { SingleIndexStatementSet } from './set.js';
+        import { Rule, Clause, Reasoner } from './reasoner.js';
+
         // - nested-iterator
 
         // // (array iterators)
