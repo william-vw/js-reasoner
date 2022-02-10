@@ -51,9 +51,9 @@ export class Statement {
 
     [Symbol.iterator]() {
         const stmt = this;
+        
         return {
             idx: 1,
-
             next: function () {
                 if (this.idx > TermPos.O)
                     return { done: true };

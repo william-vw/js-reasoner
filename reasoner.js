@@ -1,5 +1,6 @@
 import { Statement, TermPos } from './statement.js';
 import { SingleIndexStatementSet } from './set.js';
+import { ClauseTypes } from './rule.js';
 
 export class Reasoner {
 
@@ -8,8 +9,8 @@ export class Reasoner {
     rules;
     clauses;
 
-    // (1) assuming that this dataset does not contain any data initially
-    // else a saturation operation would be appropriate to initialize the reasoner
+    // (1) assuming that this dataset does not contain any initial data
+    // else a saturation operation would be more appropriate
 
     // (2) currently assuming that rules are not added after initialization
 
@@ -19,8 +20,10 @@ export class Reasoner {
 
         this.clauses = new SingleIndexStatementSet(TermPos.P);
         for (var rule of rules) {
-            for (var clause of rule.body)
-                this.clauses.add(clause);
+            for (var clause of rule.body) {
+                if (clause.type == ClauseTypes.PATTERN)
+                    this.clauses.add(clause);
+            }
         }
     }
 
@@ -63,9 +66,23 @@ export class Reasoner {
         // ... 
 
         const next = clauses.splice(0, 1)[0];
-        const grounded = stack.current().ground(next);
 
-        console.debug("next clause:", next + "", "(grounded:", grounded + "", ")");
+        if (next.type == ClauseTypes.BUILTIN) {
+            const grounded = stack.current().groundTerms(next.args);
+
+            console.debug("next builtin:", next + "", "(grounded:", grounded + "", ")");
+            if (!next.evaluate(grounded)) {
+                console.debug("builtin failed!");
+                return false;
+            
+            } else {
+                console.debug("builtin success!");
+                return this.matchClauses(rule, clauses, stack);
+            }
+        }
+
+        const grounded = stack.current().groundPattern(next);
+        console.debug("next pattern:", next + "", "(grounded:", grounded + "", ")");
 
         var anySuccess = false;
 
@@ -92,13 +109,19 @@ export class Reasoner {
 
         var anySuccess = false;
 
-        const inferences = rule.head.map(c => binding.ground(c));
+        const inferences = rule.head.map(c => binding.groundPattern(c));
         for (const inference of inferences) {
             if (inference.includesVariables())
                 console.error("inferring variable statement:", inference + "");
             else {
                 if (!this.dataset.contains(inference)) {
                     console.debug("inferred new:", inference + "");
+
+                    // TODO is there any benefit caching these inferences;
+                    // i.e., only adding them after all have been instantiated
+                    // and then iterating over them in the infer(..) loop
+                    // (a type of "saturation" approach)
+                    
                     this.dataset.add(inference);
 
                     anySuccess = true;
@@ -173,21 +196,28 @@ class Binding {
         this.array = new Array(rule.numVars());
     }
 
-    ground(clause) {
+    groundPattern(clause) {
         if (!clause.includesVariables())
             return clause;
 
         var grounded = new Statement();
         for (var i = TermPos.S; i <= TermPos.O; i++) {
             const term = clause.get(i);
-
-            if (term.isVariable() && this.isBound(term))
-                grounded.set(i, this.getBinding(term));
-            else
-                grounded.set(i, term);
+            grounded.set(i, this.groundTerm(term));
         }
 
         return grounded;
+    }
+
+    groundTerms(terms) {
+        return terms.map(t => this.groundTerm(t));
+    }
+
+    groundTerm(term) {
+        if (term.isVariable() && this.isBound(term))
+            return this.getBinding(term);
+        else
+            return term;
     }
 
     bind(clause, stmt) {
@@ -223,80 +253,5 @@ class Binding {
 
     toString() {
         return "[" + this.array.map((e, i) => `${i}:${e}`).join(", ") + "]";
-    }
-}
-
-export class Rule {
-
-    body;
-    head;
-
-    visitor = new RuleVisitor(this);
-
-    constructor(body, head) {
-        this.body = body;
-        this.visitor.visitBody(body);
-
-        this.head = head;
-        this.visitor.visitHead(head);
-    }
-
-    numVars() {
-        return this.visitor.numVars;
-    }
-
-    toString() {
-        return "{" + this.body.map(e => e + "").join(" ") + " } => { " + this.head.map(e => e + "") + " }";
-    }
-}
-
-class RuleVisitor {
-
-    rule;
-
-    numVars = 0;
-    varMap = {};
-
-    constructor(rule) {
-        this.rule = rule;
-    }
-
-    visitBody(clauses) {
-        for (var i = 0; i < clauses.length; i++) {
-            var clause = clauses[i];
-            clause.pos = i;
-
-            this.visitClause(clause);
-        }
-    }
-
-    visitHead(clauses) {
-        clauses.forEach(c => this.visitClause(c));
-    }
-
-    visitClause(clause) {
-        clause.rule = this.rule;
-
-        for (const term of clause)
-            this.visitTerm(term);
-    }
-
-    visitTerm(term) {
-        if (term.isVariable()) {
-            if (!(term.name in this.varMap))
-                this.varMap[term.name] = this.numVars++;
-
-            term.idx = this.varMap[term.name];
-        }
-    }
-}
-
-export class Clause extends Statement {
-
-    rule;
-    pos;
-
-    constructor(s, p, o) {
-        super(s, p, o);
     }
 }

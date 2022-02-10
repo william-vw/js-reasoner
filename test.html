@@ -7,7 +7,9 @@
         import { Statement, Constant, Variable, TermPos } from './statement.js';
         import { NestedIterator } from './iterator.js';
         import { SingleIndexStatementSet } from './set.js';
-        import { Rule, Clause, Reasoner } from './reasoner.js';
+        import { Rule, Pattern } from './rule.js';
+        import * as Builtins from './builtins.js';
+        import { Reasoner } from './reasoner.js';
 
         // - nested-iterator
 
@@ -59,11 +61,11 @@
 
         // // (vars should be indexed properly)
         // const rule = new Rule([
-        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
-        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
         // ], [
-        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
 
         // console.log(rule + "");
@@ -91,11 +93,11 @@
         // dataset.add(new Statement(new Constant("l1"), new Constant("p2"), new Constant("m")));
 
         // const rule = new Rule([
-        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
-        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
         // ], [
-        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
 
         // var reasoner = new Reasoner([ rule ], dataset);
@@ -109,24 +111,24 @@
         // dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
 
         // const rule1 = new Rule([
-        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m"))
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m"))
         // ], [
-        //     new Clause(new Variable("m"), new Constant("p3"), new Constant("n"))
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Constant("n"))
         // ]);
 
         // const rule2 = new Rule([
-        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
         // ], [
-        //     new Clause(new Constant("test2"), new Constant("type"), new Constant("success"))
+        //     new Pattern(new Constant("test2"), new Constant("type"), new Constant("success"))
         // ]);
 
         // const rule3 = new Rule([
-        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
-        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
         // ], [
-        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
 
         // var reasoner = new Reasoner([rule1, rule2, rule3], dataset);
@@ -136,35 +138,54 @@
 
         // ('proper' way of handling new statements in general)
 
-        const rule1 = new Rule([
-            new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-            new Clause(new Variable("l"), new Constant("p2"), new Variable("m"))
+        // const rule1 = new Rule([
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m"))
+        // ], [
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Constant("n"))
+        // ]);
+
+        // const rule2 = new Rule([
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Pattern(new Constant("test2"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // const rule3 = new Rule([
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Pattern(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Pattern(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
+        // ]);
+        
+        // var reasoner = new Reasoner([ rule1, rule2, rule3 ]);
+
+        // var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
+        // dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
+
+        // console.log("dataset:");
+        // dataset.print();
+
+        // -- builtins
+
+        const rule = new Rule([
+            new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+            new Builtins.LT(new Variable("l"), new Constant(10)),
         ], [
-            new Clause(new Variable("m"), new Constant("p3"), new Constant("n"))
+            new Pattern(new Constant("test3"), new Constant("type"), new Constant("success"))
         ]);
 
-        const rule2 = new Rule([
-            new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
-        ], [
-            new Clause(new Constant("test2"), new Constant("type"), new Constant("success"))
-        ]);
-
-        const rule3 = new Rule([
-            new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
-            new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
-            new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
-        ], [
-            new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
-        ]);
-
-        var reasoner = new Reasoner([rule1, rule2, rule3]);
+        var reasoner = new Reasoner([ rule ]);
 
         var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
-        dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
-        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
+        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(9)));
+        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(11)));
 
         console.log("dataset:");
         dataset.print();
+
     </script>
 
 </head>
