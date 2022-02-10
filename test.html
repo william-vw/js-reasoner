@@ -41,50 +41,62 @@
         // //     console.log(stmt + "");
 
         // var needle = new Statement(new Constant("i"), new Constant("p3"), new Constant("j"));
+        // console.log(dataset.contains(needle));
+
         // var results = dataset.findMatches(needle);
         // console.log(needle + ":");
         // for (result of results)
         //     console.log(result + "");
 
-        // console.log("\n");
+        // - reasoner
 
-        // var needle = new Statement(new Constant("g"), new Variable("v3"), new Constant("h"));
-        // var results = dataset.findMatches(needle);
+        // -- rules
+
+        // // (vars should be indexed properly)
+        // const rule = new Rule([
+        //     new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
+        //     new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
+        // ], [
+        //     new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // console.log(rule + "");
+
+        // -- clauses-index
+
+        // var clauses = new SingleIndexStatementSet(TermPos.P);
+        // clauses.add(new Statement(new Constant("a"), new Variable("p"), new Constant("b")));
+        // clauses.add(new Statement(new Variable("x"), new Constant("p"), new Constant("q")));
+
+        // var needle = new Statement(new Constant("a"), new Constant("p"), new Constant("q"));
+        // var results = clauses.findMatches(needle);
         // console.log(needle + ":");
         // for (result of results)
         //     console.log(result + "");
 
-        // - rules
+        // -- reasoning
 
+        // (simple non-chaining inference)
+        
         var dataset = new SingleIndexStatementSet(TermPos.P);
-        // dataset.add(new Statement(new Constant("a"), new Constant("p"), new Constant("b")));
-        // dataset.add(new Statement(new Constant("c"), new Constant("p"), new Constant("d")));
-        // dataset.add(new Statement(new Constant("e"), new Constant("p2"), new Constant("f")));
-        // dataset.add(new Statement(new Constant("g"), new Constant("p3"), new Constant("h")));
-        // dataset.add(new Statement(new Constant("i"), new Constant("p3"), new Constant("j")));
+        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant("l")));
+        dataset.add(new Statement(new Constant("k1"), new Constant("p"), new Constant("l1")));
+        dataset.add(new Statement(new Constant("l"), new Constant("p2"), new Constant("m")));
+        dataset.add(new Statement(new Constant("l1"), new Constant("p2"), new Constant("m")));
 
-        var rule = new Rule([
-            new Clause(new Constant("a"), new Variable("p"), new Constant("b")),
-            new Clause(new Variable("x"), new Constant("p"), new Constant("q"))
+        const rule = new Rule([
+            new Clause(new Variable("k"), new Constant("p"), new Variable("l")),
+            new Clause(new Variable("l"), new Constant("p2"), new Variable("m")),
+            new Clause(new Variable("m"), new Constant("p3"), new Variable("n"))
         ], [
-            new Clause(new Variable("x"), new Constant("p2"), new Constant("b2"))
+            new Clause(new Constant("test1"), new Constant("type"), new Constant("success"))
         ]);
 
         var reasoner = new Reasoner(dataset, [ rule ]);
 
-        var stmt = new Statement(new Constant("a"), new Constant("p"), new Constant("q"));
-        reasoner.infer(stmt);
-
-        // var dataset = new SingleIndexStatementSet(TermPos.P);
-        // dataset.add(new Statement(new Constant("a"), new Variable("p"), new Constant("b")));
-        // dataset.add(new Statement(new Variable("x"), new Constant("p"), new Constant("q")));
-
-        // var needle = new Statement(new Constant("a"), new Constant("p"), new Constant("q"));
-        // var results = dataset.findMatches(needle);
-        // console.log(needle + ":");
-        // for (result of results)
-        //     console.log(result + "");
-
+        const newStmt = new Statement(new Constant("m"), new Constant("p3"), new Constant("n"));
+        reasoner.infer(newStmt);
     </script>
 
 </head>

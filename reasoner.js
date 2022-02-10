@@ -22,50 +22,188 @@ class Reasoner {
     }
 
     infer(stmt) {
-        this.clauses.print();
+        // this.clauses.print();
 
+        console.debug("infer:", stmt + "");
         const matches = this.clauses.findMatches(stmt);
         for (var clause of matches) {
-            console.log("match:", clause);
+            console.debug("clause match:", clause + "");
             const rule = clause.rule;
 
-            if (this.unify(stmt, clause)) {
-                this.matchClauses(rule, clause);
-            }
+            const stack = new BindingStack(rule);
+            stack.current().bind(clause, stmt);
+
+            console.debug("stack:", stack + "");
+
+            const fired = this.matchBody(rule, clause, stack);
         }
     }
 
     // (private)
-    matchBody(rule, clause) {
+    matchBody(rule, clause, stack) {
         const remaining = rule.body.slice();
         remaining.splice(clause.pos, 1);
 
-        return this.matchClauses(rule, remaining);
-    }
-
-    matchClauses(rule, clauses) {
-        if (clauses.length == 0) {
-            fireRule(rule);
-        }
-
-        // TODO order based on selectivity
-
-        var next = remaining.splice(0, 1);
-        if (this.dataset.findMatches(next)) {
-            // TODO binding stack
-
-            return this.matchClauses(rule, clauses);
-        }
-    }
-
-    fireRule(rule) {
-        // ...
+        return this.matchClauses(rule, remaining, stack);
     }
 
     // (private)
-    // TODO
-    unify(stmt, clause) {
-        return true;
+    matchClauses(rule, clauses, stack) {
+        if (clauses.length == 0) {
+            this.fireRule(rule, stack.current());
+            return true;
+        }
+
+        // TODO order based on selectivity
+        // ... 
+
+        const next = clauses.splice(0, 1)[0];
+        const grounded = stack.current().ground(next);
+
+        console.debug("next clause:", next + "", "(grounded:", grounded + "", ")");
+
+        const matches = this.dataset.findMatches(grounded);
+        for (const match of matches) {
+            console.debug("data match:", match + "", "(clause:", next + "", ")");
+            stack.windup();
+            stack.current().bind(grounded, match);
+            console.debug("stack:", stack + "");
+
+            const success = this.matchClauses(rule, clauses.slice(), stack);
+            
+            stack.unwind();
+        }
+    }
+
+    // (private)
+    fireRule(rule, binding) {
+        console.debug("fire rule!");
+        
+        const inferences = rule.head.map(c => binding.ground(c));
+        for (const inference of inferences) {
+            if (!this.dataset.contains(inference)) {
+                this.dataset.add(inference);
+                console.debug("add:", inference + "");
+
+                this.infer(inference);
+            }    
+        }
+    }
+}
+
+class Stack {
+
+    stack = [];
+
+    // constructor(...elements) {
+    //     for (const e of elements)
+    //         this.stack.push(e);
+    // }
+
+    push(e) {
+        this.stack.push(e);
+    }
+
+    peek() {
+        return this.stack[this.stack.length - 1];
+    }
+
+    pop() {
+        this.stack.pop();
+    }
+
+    toString() {
+        return this.stack.reduce((acc, cur) => cur + "\n" + acc, "").trim();
+    }
+}
+
+class BindingStack extends Stack {
+
+    constructor(rule) {
+        super();
+
+        this.initialize(rule);
+    }
+
+    current() {
+        return this.peek();
+    }
+
+    windup() {
+        const binding = this.current();
+        this.push(binding.copy());
+    }
+
+    unwind() {
+        this.pop();
+    }
+
+    // (private)
+    initialize(rule) {
+        this.push(new Binding(rule));
+    }
+}
+
+class Binding {
+
+    rule;
+    array;
+
+    constructor(rule) {
+        this.rule = rule;
+        this.array = new Array(rule.numVars());
+    }
+
+    ground(clause) {
+        if (!clause.includesVariables())
+            return clause;
+
+        var grounded = new Statement();
+        for (var i = TermPos.S; i <= TermPos.O; i++) {
+            const term = clause.get(i);
+
+            if (term.isVariable() && this.isBound(term))
+                grounded.set(i, this.getBinding(term));
+            else
+                grounded.set(i, term);
+        }
+
+        return grounded;
+    }
+
+    bind(clause, stmt) {
+        for (var i = TermPos.S; i <= TermPos.O; i++) {
+            const term = clause.get(i);
+
+            if (term.isVariable())
+                this.bindVar(term, stmt.get(i));
+        }
+    }
+
+    copy() {
+        const copy = new Binding(this.rule);
+        copy.array = this.array.slice();
+
+        return copy;
+    }
+
+    // (private)
+    isBound(vari) {
+        return this.array[vari.idx] !== undefined;
+    }
+
+    // (private)
+    getBinding(vari) {
+        return this.array[vari.idx];
+    }
+
+    // (private)
+    bindVar(vari, cnst) {
+        this.array[vari.idx] = cnst;
+    }
+
+    toString() {
+        return "[" + this.array.map((e, i) => `${i}:${e}`).join(", ") + "]";
     }
 }
 
@@ -74,20 +212,63 @@ class Rule {
     body;
     head;
 
+    visitor = new RuleVisitor(this);
+
     constructor(body, head) {
         this.body = body;
-        for (var i = 0; i < body.length; i++) {
-            var clause = body[i];
-            clause.rule = this;
-            clause.pos = i;
-        }
+        this.visitor.visitBody(body);
 
         this.head = head;
-        head.forEach(c => c.rule = this);
+        this.visitor.visitHead(head);
+    }
+
+    numVars() {
+        return this.visitor.numVars;
     }
 
     toString() {
         return this.body.map(e => e + "").join(" ") + "\n  =>\n" + this.head.map(e => e + "");
+    }
+}
+
+class RuleVisitor {
+
+    rule;
+
+    numVars = 0;
+    varMap = {};
+
+    constructor(rule) {
+        this.rule = rule;
+    }
+
+    visitBody(clauses) {
+        for (var i = 0; i < clauses.length; i++) {
+            var clause = clauses[i];
+            clause.pos = i;
+
+            this.visitClause(clause);
+        }
+    }
+
+    visitHead(clauses) {
+        clauses.forEach(c => this.visitClause(c));
+    }
+
+    visitClause(clause) {
+        clause.rule = this.rule;
+
+        for (const term of clause)
+            this.visitTerm(term);
+    }
+
+    visitTerm(term) {
+        if (term.isVariable()) {
+            if (!(term.name in this.varMap))
+                this.varMap[term.name] = this.numVars++;
+            
+            term.idx = this.varMap[term.name];
+        }
     }
 }
 
@@ -167,8 +348,21 @@ class SingleIndexStatementSet extends StatementSet {
     }
 
     // (non-exact matches)
-
     findMatches(stmt) {
+        const iterator = this.getMatchingIterator(stmt);
+        
+        const ret = {};
+        ret[Symbol.iterator] = () => iterator;
+        return ret;
+    }
+
+    contains(stmt) {
+        const iterator = this.getMatchingIterator(stmt);
+        return iterator.next().value !== undefined;
+    }
+
+    // (private)
+    getMatchingIterator(stmt) {
         const indexTerm = stmt.get(this.index);
 
         var iterator = null;
@@ -178,12 +372,10 @@ class SingleIndexStatementSet extends StatementSet {
             iterator = this.iterate(indexTerm.value);
 
         const wrapper = new FindMatchesIterator(iterator, stmt);
-
-        const ret = {};
-        ret[Symbol.iterator] = () => wrapper;
-        return ret;
+        return wrapper;
     }
 
+    // (private)
     iterate(term) {
         var iterators = [];
 
@@ -198,6 +390,7 @@ class SingleIndexStatementSet extends StatementSet {
         return new NestedIterator(iterators);
     }
 
+    // (private)
     iterateAll() {
         var allEntries = Object.values(this.stmts);
         var allIterators = allEntries.map(a => a.values());
@@ -231,8 +424,9 @@ class DoneIterator {
 
         // don't actually know at this point whether this is the last iteration
         this.getNext();
-        // only last one if we cannot find a next match
+        // only the last one if we cannot find a next match
         // .. turns out JS simply ignores entries with done=true in for .. of
+        // (still, this could be useful to avoid 1-more iteration for custom code ..)
         const done = false; // (this.nextMatch === false);
 
         ret = { value: ret.value, done: done }
@@ -381,9 +575,57 @@ class Statement {
                 return this.o;
 
             default:
-                console.error("unknown term position:", pos);
+                console.error("[Statement.get] unknown term position:", pos);
                 return null;
         }
+    }
+
+    set(pos, term) {
+        switch (pos) {
+
+            case TermPos.S:
+                this.s = term;
+                break;
+
+            case TermPos.P:
+                this.p = term;
+                break;
+
+            case TermPos.O:
+                this.o = term;
+                break;
+
+            default:
+                console.error("[Statement.set] unknown term position:", pos);
+                return null;
+        }
+    }
+
+    [Symbol.iterator]() {
+        const stmt = this;
+        return {
+            idx: 1,
+
+            next: function () {
+                if (this.idx > TermPos.O)
+                    return { done: true };
+                else {
+                    const value = stmt.get(this.idx);
+                    const done = false; // this.idx == TermPos.O;
+                    this.idx++;
+                    return { value: value, done: done };
+                }
+            }
+        };
+    }
+
+    includesVariables() {
+        for (const term of this) {
+            if (term.isVariable())
+                return true;
+        }
+
+        return false;
     }
 
     equals(stmt2, exact) {
@@ -456,6 +698,7 @@ class Constant extends Term {
 class Variable extends Term {
 
     name;
+    idx;
 
     constructor(name) {
         super(TermTypes.VARIABLE);
@@ -474,14 +717,14 @@ class Variable extends Term {
     }
 
     toString() {
-        return "?" + this.name;
+        return "?" + this.name + (this.idx !== undefined ? `(${this.idx})` : "");
     }
 }
 
 class TermTypes {
 
     static CONSTANT = "CNST";
-    static VARIABLE = "VAR";
+    static VARIABLE = "VARI";
 }
 
 class TermPos {
