@@ -1,4 +1,4 @@
-import { Statement } from './statement.js';
+import { Statement, Constant } from './statement.js';
 
 export class Rule {
 
@@ -106,13 +106,13 @@ export class Builtin /* extends Clause */ {
         this.args = args;
     }
 
-    evaluate(grounded) {
+    evaluate(grounded, bindings) {
         console.error("must implement the Builtin class");
     }
 
     [Symbol.iterator]() {
         const builtin = this;
-        
+
         return {
             idx: 0,
             next: function () {
@@ -129,11 +129,16 @@ export class Builtin /* extends Clause */ {
     }
 
     toString() {
-        return this.constructor.name + "(" + this.args.map(a => a + "").join(", ") + ")";
+        return this.getId() + "(" + this.args.map(a => a + "").join(", ") + ")";
+    }
+
+    // (private)
+    getId() {
+        return this.constructor.name;
     }
 }
 
-export class FnBuiltin extends Builtin {
+export class FunctionalBuiltin extends Builtin {
 
     fn;
 
@@ -143,7 +148,56 @@ export class FnBuiltin extends Builtin {
         this.fn = fn;
     }
 
-    evaluate(grounded) {
+    evaluate(grounded, bindings) {
         return this.fn(grounded);
+    }
+}
+
+export class MutatingBuiltin extends Builtin {
+
+    constructor(args) {
+        super(args);
+    }
+
+    evaluate(ground, bindings) {
+        if (!this.checkInputTerms(ground))
+            return false;
+
+        const result = this.op(ground);
+        const term = new Constant(result);
+
+        const output = this.getOutputTerm(ground);
+        if (output.isVariable()) {
+            bindings.bindVar(output, term);
+            return true;
+
+        } else {
+            return term.equals(output);
+        }
+    }
+
+    // TODO subclasses need to manually ignore the last element in ground
+    // (this represents the output variable)
+    op(ground) {
+        console.error("must implement the MutatingBuiltin class");
+    }
+
+    // (private)
+    checkInputTerms(ground) {
+        for (var i = 0; i < ground.length - 1; i++) {
+            const term = ground[i];
+
+            if (term.isVariable()) {
+                console.error("[" + this.getId() + "] unbound variable in builtin:", term + "");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // (private)
+    getOutputTerm(ground) {
+        return ground[ground.length - 1];
     }
 }

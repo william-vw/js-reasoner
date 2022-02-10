@@ -168,16 +168,48 @@
         // console.log("dataset:");
         // dataset.print();
 
-        // -- builtins
+        // -- builtins (functional)
 
-        const rule = new Rule([
-            new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
-            new Builtins.LT(new Variable("l"), new Constant(10)),
+        // const rule = new Rule([
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Builtins.LT(new Variable("l"), new Constant(10)),
+        // ], [
+        //     new Pattern(new Constant("test3"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // var reasoner = new Reasoner([ rule ]);
+
+        // var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(9)));
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(11)));
+
+        // console.log("dataset:");
+        // dataset.print();
+
+        // const rule = new Rule([
+        //     new Pattern(new Variable("k"), new Constant("p"), new Variable("l")),
+        //     new Builtins.LT(new Variable("l"), new Constant(10)),
+        // ], [
+        //     new Pattern(new Constant("test3"), new Constant("type"), new Constant("success"))
+        // ]);
+
+        // -- builtins (mutating)
+
+        const rule1 = new Rule([
+            new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
+            new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Variable("str")),
         ], [
-            new Pattern(new Constant("test3"), new Constant("type"), new Constant("success"))
+            new Pattern(new Constant("test3"), new Constant("output"), new Variable("str"))
         ]);
 
-        var reasoner = new Reasoner([ rule ]);
+        const rule2 = new Rule([
+            new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
+            new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Constant("k-9")),
+        ], [
+            new Pattern(new Variable("x"), new Constant("type"), new Constant("success"))
+        ]);
+
+        var reasoner = new Reasoner([ rule1, rule2 ]);
 
         var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
         dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(9)));

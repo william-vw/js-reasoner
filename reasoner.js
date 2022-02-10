@@ -39,7 +39,7 @@ export class Reasoner {
             console.debug("clause match:", descr);
 
             const stack = new BindingStack(rule);
-            stack.current().bind(clause, stmt);
+            stack.current().bindClause(clause, stmt);
 
             console.debug("stack:", stack + "");
 
@@ -70,8 +70,8 @@ export class Reasoner {
         if (next.type == ClauseTypes.BUILTIN) {
             const grounded = stack.current().groundTerms(next.args);
 
-            console.debug("next builtin:", next + "", "(grounded:", grounded + "", ")");
-            if (!next.evaluate(grounded)) {
+            console.debug("next builtin:", next + "", "( grounded:", grounded + "", ")");
+            if (!next.evaluate(grounded, stack.current())) {
                 console.debug("builtin failed!");
                 return false;
             
@@ -91,7 +91,7 @@ export class Reasoner {
             console.debug("data match:", match + "", "(clause:", next + "", ")");
             
             stack.windup();
-            stack.current().bind(grounded, match);
+            stack.current().bindClause(grounded, match);
             console.debug("stack:", stack + "");
 
             const success = this.matchClauses(rule, clauses.slice(), stack);
@@ -113,6 +113,7 @@ export class Reasoner {
         for (const inference of inferences) {
             if (inference.includesVariables())
                 console.error("inferring variable statement:", inference + "");
+           
             else {
                 if (!this.dataset.contains(inference)) {
                     console.debug("inferred new:", inference + "");
@@ -220,13 +221,17 @@ class Binding {
             return term;
     }
 
-    bind(clause, stmt) {
+    bindClause(clause, stmt) {
         for (var i = TermPos.S; i <= TermPos.O; i++) {
             const term = clause.get(i);
 
             if (term.isVariable())
                 this.bindVar(term, stmt.get(i));
         }
+    }
+
+    bindVar(vari, cnst) {
+        this.array[vari.idx] = cnst;
     }
 
     copy() {
@@ -244,11 +249,6 @@ class Binding {
     // (private)
     getBinding(vari) {
         return this.array[vari.idx];
-    }
-
-    // (private)
-    bindVar(vari, cnst) {
-        this.array[vari.idx] = cnst;
     }
 
     toString() {

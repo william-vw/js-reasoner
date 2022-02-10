@@ -147,7 +147,7 @@ export class SingleIndexStatementSet extends StatementSet {
         Object.entries(this.stmts).forEach(e => {
             const index = (e[0] ==
                 SingleIndexStatementSet.varIndex ? "<wildcard>" : e[0]);
-            const elements = e[1].map(v => v.toString()).join("\n");
+            const elements = e[1].map(v => v.toString()).join(" ");
 
             console.log(index, ":", elements);
         });
