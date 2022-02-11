@@ -452,7 +452,7 @@ export class DataParser extends Parser {
 
         for (const t of this.terms) {
             if (t.isVariable()) {
-                this.onError(`variables not allowed in data`);
+                this.onError(`variables ('${t}') not allowed in data`);
                 return false;
             }
         }
