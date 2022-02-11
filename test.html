@@ -4,12 +4,21 @@
 <head>
     <script src="reasoner.js" type="module"></script>
     <script type="module">
-        import { Statement, Constant, Variable, TermPos } from './statement.js';
-        import { NestedIterator } from './iterator.js';
-        import { SingleIndexStatementSet } from './set.js';
-        import { Rule, Pattern } from './rule.js';
-        import * as Builtins from './builtins.js';
-        import { Reasoner } from './reasoner.js';
+        // import { Statement, Constant, Variable, TermPos } from './statement.js';
+        // import { NestedIterator } from './iterator.js';
+        // import { SingleIndexStatementSet } from './set.js';
+        // import { Rule, Pattern } from './rule.js';
+        // import * as Builtins from './builtins.js';
+        // import { Reasoner } from './reasoner.js';
+        import { RuleParser } from './parser.js';
+
+        // -- parsing
+        // enable debugging (true)
+        const parser = new RuleParser(true);
+        
+        const rule1 = "{ ?x <p> ?y . } => { <test1> <type> <success> . }";
+        const rule2 = "{ ?x <p> ?y . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
+        parser.parse(rule2);
 
         // - nested-iterator
 
@@ -195,28 +204,28 @@
 
         // -- builtins (mutating)
 
-        const rule1 = new Rule([
-            new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
-            new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Variable("str")),
-        ], [
-            new Pattern(new Constant("test3"), new Constant("output"), new Variable("str"))
-        ]);
+        // const rule1 = new Rule([
+        //     new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
+        //     new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Variable("str")),
+        // ], [
+        //     new Pattern(new Constant("test3"), new Constant("output"), new Variable("str"))
+        // ]);
 
-        const rule2 = new Rule([
-            new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
-            new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Constant("k-9")),
-        ], [
-            new Pattern(new Variable("x"), new Constant("type"), new Constant("success"))
-        ]);
+        // const rule2 = new Rule([
+        //     new Pattern(new Variable("x"), new Constant("p"), new Variable("y")),
+        //     new Builtins.StringAppend(new Variable("x"), new Constant("-"), new Variable("y"), new Constant("k-9")),
+        // ], [
+        //     new Pattern(new Variable("x"), new Constant("type"), new Constant("success"))
+        // ]);
 
-        var reasoner = new Reasoner([ rule1, rule2 ]);
+        // var reasoner = new Reasoner([ rule1, rule2 ]);
 
-        var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
-        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(9)));
-        dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(11)));
+        // var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(9)));
+        // dataset.add(new Statement(new Constant("k"), new Constant("p"), new Constant(11)));
 
-        console.log("dataset:");
-        dataset.print();
+        // console.log("dataset:");
+        // dataset.print();
 
     </script>
 
