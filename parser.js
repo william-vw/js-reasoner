@@ -1,6 +1,212 @@
 import { Pattern, Rule } from './rule.js';
-import { Variable, Constant } from './statement.js';
+import { Statement, Variable, Constant } from './statement.js';
 
+export class Parser {
+
+    data;
+    len = 0;
+    idx = 0;
+
+    clauses = [];
+    terms = [];
+    term = false;
+
+    logging = false;
+
+    listener;
+
+    constructor(logging, listener) {
+        if (logging !== undefined)
+            this.logging = logging;
+
+        this.listener = listener;
+    }
+
+    // (private)
+    parseClause(token) {
+        var val = false;
+        switch (token) {
+            case '"':
+                val = this.untilSep('"');
+                break;
+
+            case '<':
+                val = this.untilSep('>');
+                break;
+
+            case '?':
+                val = this.whileRe(/[a-zA-Z0-9_\-\.:]/);
+                if (val == '') {
+                    this.onError(`expecting variable name at char ${this.idx}`);
+                    return false;
+                }
+
+                break;
+
+            case '.':
+                return this.newClause();
+
+            default:
+                if (/\s/.test(token))
+                    return true;
+
+                val = this.whileNr();
+                break;
+        }
+
+        if (val == false)
+            return false;
+
+        switch (token) {
+
+            case '"':
+                this.term = new Constant('"' + val + '"');
+                break;
+
+            case '<':
+                this.term = new Constant('<' + val + '>');
+                break;
+
+            case '?':
+                this.term = new Variable(val);
+                break;
+
+            default:
+                this.term = new Constant(val);
+                break;
+        }
+
+        return true;
+    }
+
+    // (private)
+    unexpectedToken(token) {
+        this.onError(`unexpected '${token}' at char ${this.idx}`);
+        return false;
+    }
+
+    // (private)
+    newTerm() {
+        this.terms.push(this.term);
+        this.term = false;
+    }
+
+    // (private)
+    newClause() {
+        if (this.terms.length != 3) {
+            this.onError(`expecting 3 triple terms (found '${this.terms + ""}') at char ${this.idx}`);
+            return false;
+        }
+
+        this.log("new clause:", this.terms + "");
+
+        this.clauses.push(this.createClause(this.terms[0], this.terms[1], this.terms[2]));
+        this.terms = [];
+
+        return true;
+    }
+
+    // (overridden by subclasses)
+    createClause(s, p, o) {
+        this.onError("must implement the Parser class");
+    }
+
+    // (private)
+    untilSep(end) {
+        var str = "";
+
+        for (this.idx++; this.idx < this.len; this.idx++) {
+            const char = this.curChar();
+            if (char != end)
+                str += char;
+            else {
+                this.idx++;
+                return str;
+            }
+        }
+
+        if (str.length == 0) {
+            this.onError(`expecting ${end}, found EOF`);
+            return false;
+        }
+
+        return str;
+    }
+
+    // (private)
+    whileRe(re) {
+        var str = "";
+
+        for (this.idx++; this.idx < this.len; this.idx++) {
+            const char = this.curChar();
+            if (re.test(char))
+                str += char;
+            else {
+                this.idx--;
+                return str;
+            }
+        }
+
+        if (str.length == 0) {
+            this.onError(`expecting ${re}, found EOF`);
+            return false;
+        }
+
+        return str;
+    }
+
+    whileNr() {
+        var str = "";
+
+        var decimal = false;
+        for (; this.idx < this.len; this.idx++) {
+            const char = this.curChar();
+
+            if (/[0-9]/.test(char))
+                str += char;
+
+            else if (char == ".") {
+                if (decimal)
+                    return this.unexpectedToken(char);
+                decimal = true;
+                str += char;
+
+            } else if (char == ' ') {
+                this.idx--;
+                return str * 1;
+
+            } else
+                return this.unexpectedToken(char);
+        }
+    }
+
+    // (can be overridden by subclasses)
+    token() {
+        return this.charAt(this.idx);
+    }
+
+    // (private)
+    curChar() {
+        return this.data[this.idx];
+    }
+
+    // (private)
+    charAt(idx) {
+        return this.data[idx];
+    }
+
+    log(...args) {
+        if (this.logging)
+            console.debug(args.join(" "));
+    }
+
+    onError(msg) {
+        if (this.listener)
+            this.listener.error(msg);
+        else
+            console.error(msg);
+    }
+}
 
 const NEXT_RULE = 'NEXT_RULE';
 const IN_BODY = 'IN_BODY';
@@ -10,31 +216,21 @@ const NEXT_HEAD = 'NEXT_HEAD';
 const BODY = 'BODY';
 const HEAD = 'HEAD';
 
-export class RuleParser {
+export class RuleParser extends Parser {
 
-    data;
-    len = 0;
-    idx = 0;
     state = NEXT_RULE;
 
     rules = [];
-    clauses = [];
-    terms = [];
     head;
     body;
 
-    logging = false;
-
-    constructor(logging) {
-        if (logging !== undefined)
-            this.logging = logging;
+    constructor(logging, listener) {
+        super(logging, listener);
     }
 
     parse(str) {
         this.data = str;
         this.len = str.length;
-
-        var term = false;
 
         for (; this.idx < this.len; this.idx++) {
             const token = this.token();
@@ -90,46 +286,21 @@ export class RuleParser {
 
                     break;
 
-                case '"':
-                    term = new Constant('"' + this.untilSep('"') + '"');
-                    break;
-
-                case '<':
-                    term = new Constant('<' + this.untilSep('>') + '>');
-                    break;
-
-                case '?':
-                    term = new Variable(this.whileRe(/[a-zA-Z0-9_\-\.:]/));
-                    break;
-
-                case '.':
-                    if (!this.newClause())
-                        return false;
-
-                    break;
-
                 default:
-                    if (/\s/.test(token))
-                        continue;
-
-                    const nr = this.whileNr();
-                    if (nr == false)
+                    if (!this.parseClause(token))
                         return false;
-
-                    term = new Constant(nr);
                     break;
             }
 
-            if (term !== false) {
-                this.log("new term:", term + "");
+            if (this.term !== false) {
+                this.log("new term:", this.term + "");
 
                 if (!(this.state == IN_BODY || this.state == IN_HEAD)) {
-                    console.error(`found term '${term + ""}' outside of rule`);
+                    this.onError(`unexpected term '${this.term + ""}' at char ${this.idx}`);
                     return false;
                 }
 
-                this.terms.push(term);
-                term = false;
+                this.newTerm(this.term);
             }
         }
 
@@ -137,25 +308,6 @@ export class RuleParser {
             return false;
 
         return this.rules;
-    }
-
-    unexpectedToken(token) {
-        console.error(`unexpected '${token}' at char ${this.idx}`);
-        return false;
-    }
-
-    newClause() {
-        if (this.terms.length != 3) {
-            console.error(`expecting 3 triple terms (found '${this.terms + ""}') at char ${this.idx}`);
-            return false;
-        }
-
-        this.log("new clause:", this.terms + "");
-
-        this.clauses.push(new Pattern(this.terms[0], this.terms[1], this.terms[2]));
-        this.terms = [];
-
-        return true;
     }
 
     newPart(type) {
@@ -180,7 +332,7 @@ export class RuleParser {
 
         if (this.clauses.length == 0) {
             const part = (this.state == IN_HEAD ? "head" : "body");
-            console.error(`empty rule ${part} at char ${this.idx}`);
+            this.onError(`empty rule ${part} at char ${this.idx}`);
 
             return false;
         }
@@ -192,12 +344,12 @@ export class RuleParser {
         switch (this.state) {
 
             case NEXT_HEAD:
-                console.error(`expecting rule head at char ${this.idx}`);
+                this.onError(`expecting rule head at char ${this.idx}`);
                 return false;
 
             case IN_HEAD:
             case IN_BODY:
-                console.error(`unfinished rule at char ${this.idx}`);
+                this.onError(`unfinished rule at char ${this.idx}`);
                 return false;
 
             default:
@@ -214,62 +366,8 @@ export class RuleParser {
         this.head = null;
     }
 
-    // (private)
-    untilSep(end) {
-        var str = "";
-
-        for (this.idx++; this.idx < this.len; this.idx++) {
-            const char = this.curChar();
-            if (char != end)
-                str += char;
-            else {
-                this.idx++;
-                return str;
-            }
-        }
-
-        console.error(`expecting ${end}, found EOF`);
-        return null;
-    }
-
-    // (private)
-    whileRe(re) {
-        var str = "";
-
-        for (this.idx++; this.idx < this.len; this.idx++) {
-            const char = this.curChar();
-            if (re.test(char))
-                str += char;
-            else
-                return str;
-        }
-
-        console.error(`expecting ${re}, found EOF`);
-        return false;
-    }
-
-    whileNr() {
-        var str = "";
-
-        var decimal = false;
-        for (; this.idx < this.len; this.idx++) {
-            const char = this.curChar();
-
-            if (/[0-9]/.test(char))
-                str += char;
-
-            else if (char == ".") {
-                if (decimal)
-                    return this.unexpectedToken(char);
-                decimal = true;
-                str += char;
-
-            } else if (char == ' ') {
-                return str * 1;
-
-            } else
-                return this.unexpectedToken(char);
-        }
+    createClause(s, p, o) {
+        return new Pattern(s, p, o);
     }
 
     token() {
@@ -283,21 +381,35 @@ export class RuleParser {
         } else
             return char;
     }
+}
 
-    // (private)
-    curChar() {
-        return this.data[this.idx];
+export class DataParser extends Parser {
+
+    constructor(logging, listener) {
+        super(logging, listener);
     }
 
-    // (private)
-    charAt(idx) {
-        return this.data[idx];
-    }
+    parse(str) {
+        this.data = str;
+        this.len = str.length;
 
-    log(...args) {
-        if (this.logging) {
-            const str = args.join(" ");
-            console.debug(str);
+        for (; this.idx < this.len; this.idx++) {
+            const token = this.token();
+
+            this.log("token", "'" + token + "'", this.state);
+            if (!this.parseClause(token))
+                return false;
+
+            if (this.term !== false) {
+                this.log("new term:", this.term + "");
+                this.newTerm();
+            }
         }
+
+        return this.clauses;
+    }
+
+    createClause(s, p, o) {
+        return new Statement(s, p, o);
     }
 }

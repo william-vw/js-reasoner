@@ -2,7 +2,6 @@
 <html>
 
 <head>
-    <script src="reasoner.js" type="module"></script>
     <script type="module">
         // import { Statement, Constant, Variable, TermPos } from './statement.js';
         // import { NestedIterator } from './iterator.js';
@@ -10,15 +9,26 @@
         // import { Rule, Pattern } from './rule.js';
         // import * as Builtins from './builtins.js';
         // import { Reasoner } from './reasoner.js';
-        import { RuleParser } from './parser.js';
+        import { RuleParser, DataParser } from './parser.js';
 
         // -- parsing
-        // enable debugging (true)
-        const parser = new RuleParser(true);
         
-        const rule1 = "{ ?x <p> ?y . } => { <test1> <type> <success> . }";
-        const rule2 = "{ ?x <p> ?y . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
-        parser.parse(rule2);
+        // enable debugging (true)
+        const ruleParser = new RuleParser(true);
+        const rules =
+            "{ ?x <p> ?y . } => { <test1> <type> <success> . }" +
+            "{ ?x <p> ? . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
+        const parsedRules = ruleParser.parse(rules);
+        console.log("parsed:");
+        console.log(parsedRules.join("\n"));
+
+        console.log("\n");
+
+        const dataParser = new DataParser(true);
+        const triples = "<x> <y> <z> .\n<x> <y> 2 .\n<x> \"z\" <y> .";
+        const parsedTriples = dataParser.parse(triples);
+        console.log("parsed:");
+        console.log(parsedTriples.join("\n"));
 
         // - nested-iterator
 
