@@ -14,17 +14,17 @@
         // -- parsing
         
         // enable debugging (true)
-        const ruleParser = new RuleParser(true);
+        const ruleParser = new RuleParser(null, true);
         const rules =
             "{ ?x <p> ?y . } => { <test1> <type> <success> . }" +
-            "{ ?x <p> ? . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
+            "{ ?x <p> ?y . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
         const parsedRules = ruleParser.parse(rules);
         console.log("parsed:");
         console.log(parsedRules.join("\n"));
 
         console.log("\n");
 
-        const dataParser = new DataParser(true);
+        const dataParser = new DataParser(null, true);
         const triples = "<x> <y> <z> .\n<x> <y> 2 .\n<x> \"z\" <y> .";
         const parsedTriples = dataParser.parse(triples);
         console.log("parsed:");
@@ -119,7 +119,8 @@
         //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
 
-        // var reasoner = new Reasoner([ rule ], dataset);
+        // var reasoner = new Reasoner([ rule ]);
+        // reasoner.dataset = dataset;
 
         // const newStmt = new Statement(new Constant("m"), new Constant("p3"), new Constant("n"));
         // reasoner.infer(newStmt);
@@ -150,7 +151,8 @@
         //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
 
-        // var reasoner = new Reasoner([rule1, rule2, rule3], dataset);
+        // var reasoner = new Reasoner([rule1, rule2, rule3]);
+        // reasoner.dataset = dataset;
 
         // const newStmt = new Statement(new Constant("k"), new Constant("p"), new Constant("l"));
         // reasoner.infer(newStmt);

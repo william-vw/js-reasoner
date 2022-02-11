@@ -5,18 +5,22 @@ import { ClauseTypes } from './rule.js';
 export class Reasoner {
 
     dataset;
-
     rules;
     clauses;
+
+    listener;
+    logging = false;
 
     // (1) assuming that this dataset does not contain any initial data
     // else a saturation operation would be more appropriate
 
     // (2) currently assuming that rules are not added after initialization
 
-    constructor(rules, dataset) {
+    constructor(rules, listener, logging) {
         this.rules = rules;
-        this.dataset = dataset;
+
+        this.listener = listener;
+        this.logging = logging;
 
         this.clauses = new SingleIndexStatementSet(TermPos.P);
         for (var rule of rules) {
@@ -30,18 +34,18 @@ export class Reasoner {
     infer(stmt) {
         // this.clauses.print();
 
-        console.debug("infer for:", stmt + "");
+        this.log("infer for:", stmt + "");
         const matches = this.clauses.findMatches(stmt);
         for (var clause of matches) {
             const rule = clause.rule;
 
             const descr = clause + " <> " + stmt + "\n(rule: " + rule + ")";
-            console.debug("clause match:", descr);
+            this.log("clause match:", descr);
 
             const stack = new BindingStack(rule);
             stack.current().bindClause(clause, stmt);
 
-            console.debug("stack:", stack + "");
+            this.log("stack:", stack + "");
 
             const fired = this.matchBody(rule, clause, stack);
             console.log("fired?", fired, "for", descr);
@@ -70,29 +74,29 @@ export class Reasoner {
         if (next.type == ClauseTypes.BUILTIN) {
             const grounded = stack.current().groundTerms(next.args);
 
-            console.debug("next builtin:", next + "", "( grounded:", grounded + "", ")");
+            this.log("next builtin:", next + "", "( grounded:", grounded + "", ")");
             if (!next.evaluate(grounded, stack.current())) {
-                console.debug("builtin failed!");
+                this.log("builtin failed!");
                 return false;
-            
+
             } else {
-                console.debug("builtin success!");
+                this.log("builtin success!");
                 return this.matchClauses(rule, clauses, stack);
             }
         }
 
         const grounded = stack.current().groundPattern(next);
-        console.debug("next pattern:", next + "", "(grounded:", grounded + "", ")");
+        this.log("next pattern:", next + "", "(grounded:", grounded + "", ")");
 
         var anySuccess = false;
 
         const matches = this.dataset.findMatches(grounded);
         for (const match of matches) {
-            console.debug("data match:", match + "", "(clause:", next + "", ")");
-            
+            this.log("data match:", match + "", "(clause:", next + "", ")");
+
             stack.windup();
             stack.current().bindClause(grounded, match);
-            console.debug("stack:", stack + "");
+            this.log("stack:", stack + "");
 
             const success = this.matchClauses(rule, clauses.slice(), stack);
             anySuccess = anySuccess || success;
@@ -105,7 +109,7 @@ export class Reasoner {
 
     // (private)
     fireRule(rule, binding) {
-        console.debug("fire rule!");
+        this.log("fire rule!");
 
         var anySuccess = false;
 
@@ -113,16 +117,19 @@ export class Reasoner {
         for (const inference of inferences) {
             if (inference.includesVariables())
                 console.error("inferring variable statement:", inference + "");
-           
+
             else {
                 if (!this.dataset.contains(inference)) {
-                    console.debug("inferred new:", inference + "");
+                    this.log("inferred new:", inference + "");
+
+                    if (this.listener)
+                        this.listener.inference(inference);
 
                     // TODO is there any benefit caching these inferences;
                     // i.e., only adding them after all have been instantiated
                     // and then iterating over them in the infer(..) loop
                     // (a type of "saturation" approach)
-                    
+
                     this.dataset.add(inference);
 
                     anySuccess = true;
@@ -131,6 +138,11 @@ export class Reasoner {
         }
 
         return anySuccess;
+    }
+
+    log(...args) {
+        if (this.logging)
+            console.debug(args.join(" "));
     }
 }
 

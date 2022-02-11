@@ -11,15 +11,12 @@ export class Parser {
     terms = [];
     term = false;
 
+    listener;
     logging = false;
 
-    listener;
-
-    constructor(logging, listener) {
-        if (logging !== undefined)
-            this.logging = logging;
-
+    constructor(listener, logging) {
         this.listener = listener;
+        this.logging = logging;
     }
 
     // (private)

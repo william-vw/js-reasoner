@@ -25,7 +25,6 @@
         .error {
             color: red;
         }
-
     </style>
 
     <script src="lib/jquery-3.6.0.min.js"></script>
@@ -43,9 +42,8 @@
     </script>
 
     <script type="module">
-        // import { Statement, Constant, Variable, TermPos } from './statement.js';
-        // import { NestedIterator } from './iterator.js';
-        // import { SingleIndexStatementSet } from './set.js';
+        import { Statement, Constant, Variable, TermPos } from './statement.js';
+        import { SingleIndexStatementSet } from './set.js';
         // import { Rule, Pattern } from './rule.js';
         // import * as Builtins from './builtins.js';
         // import { Reasoner } from './reasoner.js';
@@ -53,25 +51,43 @@
 
         window.parse = function (data, rules) {
             // (pass true for debugging)
-            const ruleParser = new RuleParser(false, { error: (msg) => logError("rules", msg) });
-            const dataParser = new DataParser(false, { error: (msg) => logError("data", msg) });
+            const ruleParser = new RuleParser({ error: (msg) => logError("rules", msg) });
+            const dataParser = new DataParser({ error: (msg) => logError("data", msg) });
 
             const parsedData = dataParser.parse(data);
             const parsedRules = ruleParser.parse(rules)
 
-            if (parsedData && parsedRules)
-                logOutput(parsedData, parsedRules);
+            if (!(parsedData && parsedRules))
+                return;
+
+            startLog();
+            logOutput("parsed data", parsedData);
+            logOutput("parsed rules", parsedRules);
+
+            const reasoner = new Reasoner(parsedRules, {
+                inference: (stmt) => logInf(stmt)
+            });
+
+            const dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
+            parsedData.forEach(stmt => dataset.add(stmt));
         }
 
         function logError(type, msg) {
             $("#output").html(`<div class="error"><b>error parsing ${type}</b>:<br />${escapeHtml(msg)}</div>`);
         }
 
-        function logOutput(data, rules) {
-            const html = 
-                "<b>parsed data</b>:<div>" + data.map(d => escapeHtml(d + "")).join("<br />") + "</div><br />" +
-                "<b>parsed rules</b>:<div>" + rules.map(r => escapeHtml(r + "")).join("<br />") + "</div>";
-            $("#output").html(html);
+        function startLog() {
+            $("#output").html("");
+        }
+
+        function logOutput(header, data) {
+            const html =
+                `<b>${header}</b>:<div>${data.map(d => escapeHtml(d + "")).join("<br />")}</div><br />`;
+            $("#output").append(html);
+        }
+
+        function logInf(inf) {
+            // ...
         }
 
     </script>
