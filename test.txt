@@ -1,0 +1,9 @@
+data:
+<k> <p> <l> .
+<l> <p2> <m> .
+<m> <p3> <n> .
+
+rules:
+{ ?k <p> ?l . ?l <p2> ?m } => { ?m <p3> <n> }
+{ ?m <p3> ?n } => { <test1> <type> <success> }
+{ ?k <p> ?l . ?l <p2> ?m . ?m <p3> ?n } => { <test2> <type> <success> }

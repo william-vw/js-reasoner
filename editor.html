@@ -46,13 +46,15 @@
         import { SingleIndexStatementSet } from './set.js';
         // import { Rule, Pattern } from './rule.js';
         // import * as Builtins from './builtins.js';
-        // import { Reasoner } from './reasoner.js';
+        import { Reasoner } from './reasoner.js';
         import { RuleParser, DataParser } from './parser.js';
 
         window.parse = function (data, rules) {
+            startLog();
+
             // (pass true for debugging)
-            const ruleParser = new RuleParser({ error: (msg) => logError("rules", msg) });
-            const dataParser = new DataParser({ error: (msg) => logError("data", msg) });
+            const ruleParser = new RuleParser({ error: (msg) => parseError("rules", msg) });
+            const dataParser = new DataParser({ error: (msg) => parseError("data", msg) });
 
             const parsedData = dataParser.parse(data);
             const parsedRules = ruleParser.parse(rules)
@@ -60,34 +62,51 @@
             if (!(parsedData && parsedRules))
                 return;
 
-            startLog();
-            logOutput("parsed data", parsedData);
-            logOutput("parsed rules", parsedRules);
+            logHeader("derivations");
 
             const reasoner = new Reasoner(parsedRules, {
-                inference: (stmt) => logInf(stmt)
+                inference: (stmt) => logInf(stmt),
+                error: (msg) => infError(msg)
             });
 
             const dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
             parsedData.forEach(stmt => dataset.add(stmt));
-        }
 
-        function logError(type, msg) {
-            $("#output").html(`<div class="error"><b>error parsing ${type}</b>:<br />${escapeHtml(msg)}</div>`);
+            logData("parsed data", parsedData);
+            logData("parsed rules", parsedRules);
         }
 
         function startLog() {
             $("#output").html("");
         }
 
-        function logOutput(header, data) {
+        function parseError(type, msg) {
+            const header = `error parsing ${type}`;
+            error(header, true, msg);
+        }
+
+        function infError(msg) {
+            const header = "error";
+            error(header, false, msg);
+        }
+
+        function error(header, nl, msg) {
+            $("#output").append(`<div class="error"><b>${header}</b>:${nl ? '<br />' : ' '}${escapeHtml(msg)}</div>`);
+        }
+
+        function logHeader(header) {
+            $("#output").append(`<br /><b>${header}</b>:<br />`);
+        }
+
+        function logData(header, data) {
             const html =
-                `<b>${header}</b>:<div>${data.map(d => escapeHtml(d + "")).join("<br />")}</div><br />`;
+                `<br /><b>${header}</b>:<div>${data.map(d => escapeHtml(d + "")).join("<br />")}</div>`;
             $("#output").append(html);
         }
 
-        function logInf(inf) {
-            // ...
+        function logInf(stmt) {
+            const html = `<div>${escapeHtml(stmt)}</div>`;
+            $("#output").append(html);
         }
 
     </script>
@@ -103,7 +122,6 @@
     <button id="run">run</button>
     <br /><br />
     <hr />
-    <br />
     <div id="output"></div>
 </body>
 

@@ -48,7 +48,7 @@ export class Reasoner {
             this.log("stack:", stack + "");
 
             const fired = this.matchBody(rule, clause, stack);
-            console.log("fired?", fired, "for", descr);
+            this.log("fired?", fired, "for", descr);
         }
     }
 
@@ -116,7 +116,7 @@ export class Reasoner {
         const inferences = rule.head.map(c => binding.groundPattern(c));
         for (const inference of inferences) {
             if (inference.includesVariables())
-                console.error("inferring variable statement:", inference + "");
+                this.onError("inferring variable statement:" + inference);
 
             else {
                 if (!this.dataset.contains(inference)) {
@@ -143,6 +143,13 @@ export class Reasoner {
     log(...args) {
         if (this.logging)
             console.debug(args.join(" "));
+    }
+
+    onError(msg) {
+        if (this.listener)
+            this.listener.error(msg);
+        else
+            console.error(msg);
     }
 }
 
