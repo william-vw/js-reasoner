@@ -51,7 +51,7 @@ export class Statement {
 
     [Symbol.iterator]() {
         const stmt = this;
-        
+
         return {
             idx: 1,
             next: function () {
@@ -106,6 +106,10 @@ export class Term {
     equals(other, exact) {
         console.error("must implement the Term class");
     }
+
+    unpacked() {
+        console.error("must implement the Term class");
+    }
 }
 
 export class Constant extends Term {
@@ -130,6 +134,16 @@ export class Constant extends Term {
 
     toString() {
         return this.value;
+    }
+
+    unpacked() {
+        if (this.value.startsWith('"') ||
+            this.value.startsWith("<"))
+
+            return this.value.substring(1, this.value.length - 1);
+
+        else
+            return this.value;
     }
 }
 
@@ -156,6 +170,10 @@ export class Variable extends Term {
 
     toString() {
         return "?" + this.name + (this.idx !== undefined ? `(${this.idx})` : "");
+    }
+
+    unpacked() {
+        return this.name;
     }
 }
 

@@ -1,7 +1,10 @@
 import { Pattern, Rule } from './rule.js';
 import { Statement, Variable, Constant } from './statement.js';
+import * as Builtins from './builtins.js';
 
 export class Parser {
+
+    builtins;
 
     data;
     len = 0;
@@ -17,6 +20,8 @@ export class Parser {
     constructor(listener, logging) {
         this.listener = listener;
         this.logging = logging;
+
+        this.builtins = Object.keys(Builtins);
     }
 
     // (private)
@@ -90,10 +95,8 @@ export class Parser {
 
     // (private)
     newClause() {
-        if (this.terms.length != 3) {
-            this.onError(`expecting 3 triple terms (found '${this.terms + ""}') at char ${this.idx}`);
+        if (!this.checkClause())
             return false;
-        }
 
         this.log("new clause:", this.terms + "");
 
@@ -101,6 +104,26 @@ export class Parser {
         this.terms = [];
 
         return true;
+    }
+
+    checkClause() {
+        if (this.terms.length != 3) {
+            this.onError(`expecting 3 triple terms (found '${this.terms + ""}') at char ${this.idx}`);
+            return false;
+        }
+
+        return true;
+    }
+
+    isBuiltin(term) {
+        if (!term.isConstant())
+            return false;
+
+        return this.builtins.includes(term.unpacked());
+    }
+
+    getBuiltin(term) {
+        return Builtins[term.unpacked()];
     }
 
     // (overridden by subclasses)
@@ -341,12 +364,9 @@ export class RuleParser extends Parser {
         switch (this.state) {
 
             case NEXT_HEAD:
-                this.onError(`expecting rule head at char ${this.idx}`);
-                return false;
-
             case IN_HEAD:
             case IN_BODY:
-                this.onError(`unfinished rule at char ${this.idx}`);
+                this.onError(`expecting more rule, found EOF`);
                 return false;
 
             default:
@@ -364,7 +384,13 @@ export class RuleParser extends Parser {
     }
 
     createClause(s, p, o) {
-        return new Pattern(s, p, o);
+        if (this.isBuiltin(p)) {
+            const cnstr = this.getBuiltin(p);
+            // .. amazing that this works
+            return new cnstr(s, o);
+
+        } else
+            return new Pattern(s, p, o);
     }
 
     token() {
@@ -403,10 +429,34 @@ export class DataParser extends Parser {
             }
         }
 
+        if (this.terms.length > 0) {
+            this.onError(`unexpected EOF (found '${this.terms}')`);
+            return false;
+        }
+
         return this.clauses;
     }
 
     createClause(s, p, o) {
         return new Statement(s, p, o);
+    }
+
+    checkClause() {
+        if (!super.checkClause())
+            return false;
+
+        if (this.isBuiltin(this.terms[1])) {
+            this.onError(`builtins ('${this.terms[1]}') not allowed in data`);
+            return false;
+        }
+
+        for (const t of this.terms) {
+            if (t.isVariable()) {
+                this.onError(`variables not allowed in data`);
+                return false;
+            }
+        }
+
+        return true;
     }
 }

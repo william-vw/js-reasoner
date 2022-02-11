@@ -1,3 +1,5 @@
+(1)
+
 data:
 <k> <p> <l> .
 <l> <p2> <m> .
@@ -7,3 +9,13 @@ rules:
 { ?k <p> ?l . ?l <p2> ?m } => { ?m <p3> <n> }
 { ?m <p3> ?n } => { <test1> <type> <success> }
 { ?k <p> ?l . ?l <p2> ?m . ?m <p3> ?n } => { <test2> <type> <success> }
+
+
+(2)
+
+data:
+<a> <p> 9 .
+<b> <p> 11 .
+
+rules:
+{ ?k <p> ?l . ?l <LT> 11 } => { ?k <type> <success> }

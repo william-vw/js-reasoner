@@ -11,25 +11,6 @@
         // import { Reasoner } from './reasoner.js';
         import { RuleParser, DataParser } from './parser.js';
 
-        // -- parsing
-        
-        // enable debugging (true)
-        const ruleParser = new RuleParser(null, true);
-        const rules =
-            "{ ?x <p> ?y . } => { <test1> <type> <success> . }" +
-            "{ ?x <p> ?y . ?y <p> ?z } => { <test2> <type> <success> . <test2> <output> ?z }";
-        const parsedRules = ruleParser.parse(rules);
-        console.log("parsed:");
-        console.log(parsedRules.join("\n"));
-
-        console.log("\n");
-
-        const dataParser = new DataParser(null, true);
-        const triples = "<x> <y> <z> .\n<x> <y> 2 .\n<x> \"z\" <y> .";
-        const parsedTriples = dataParser.parse(triples);
-        console.log("parsed:");
-        console.log(parsedTriples.join("\n"));
-
         // - nested-iterator
 
         // // (array iterators)
@@ -179,7 +160,7 @@
         // ], [
         //     new Pattern(new Constant("test1"), new Constant("type"), new Constant("success"))
         // ]);
-        
+
         // var reasoner = new Reasoner([ rule1, rule2, rule3 ]);
 
         // var dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
@@ -239,6 +220,24 @@
         // console.log("dataset:");
         // dataset.print();
 
+        // -- parsing
+
+        // enable debugging (true)
+        const ruleParser = new RuleParser(null, false);
+        const rules =
+            "{ ?x <p> ?y . } => { <test1> <type> <success> . }" +
+            "{ ?x <p> ?y . ?y <LT> 11 } => { <test2> <type> <success> . <test2> <output> ?z }";
+        const parsedRules = ruleParser.parse(rules);
+        console.log("parsed:");
+        console.log(parsedRules.join("\n"));
+
+        console.log("\n");
+
+        // const dataParser = new DataParser(null, true);
+        // const triples = "<x> <y> <z> .\n<x> <y> 2 .\n<x> \"z\" <y> .";
+        // const parsedTriples = dataParser.parse(triples);
+        // console.log("parsed:");
+        // console.log(parsedTriples.join("\n"));
     </script>
 
 </head>

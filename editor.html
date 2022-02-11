@@ -17,7 +17,7 @@
             display: block;
         }
 
-        #output div {
+        #output div.code {
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
         }
@@ -25,6 +25,12 @@
         .error {
             color: red;
         }
+
+        .header {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
     </style>
 
     <script src="lib/jquery-3.6.0.min.js"></script>
@@ -72,8 +78,9 @@
             const dataset = new SingleIndexStatementSet(TermPos.P, reasoner);
             parsedData.forEach(stmt => dataset.add(stmt));
 
-            logData("parsed data", parsedData);
+            newline();
             logData("parsed rules", parsedRules);
+            logData("parsed data", parsedData);
         }
 
         function startLog() {
@@ -91,21 +98,25 @@
         }
 
         function error(header, nl, msg) {
-            $("#output").append(`<div class="error"><b>${header}</b>:${nl ? '<br />' : ' '}${escapeHtml(msg)}</div>`);
+            $("#output").append(`<br /><div class="error"><b>${header}</b>:${nl ? '<br />' : ' '}${escapeHtml(msg)}</div>`);
         }
 
         function logHeader(header) {
-            $("#output").append(`<br /><b>${header}</b>:<br />`);
+            $("#output").append(`<br /><div class="header">${header}:</div>`);
+        }
+
+        function newline() {
+            $("#output").append("<br />");
         }
 
         function logData(header, data) {
             const html =
-                `<br /><b>${header}</b>:<div>${data.map(d => escapeHtml(d + "")).join("<br />")}</div>`;
+                `<br /><b>${header}</b>:<div class="code">${data.map(d => escapeHtml(d + "")).join("<br />")}</div>`;
             $("#output").append(html);
         }
 
         function logInf(stmt) {
-            const html = `<div>${escapeHtml(stmt)}</div>`;
+            const html = `<div class="code">${escapeHtml(stmt)}</div>`;
             $("#output").append(html);
         }
 
