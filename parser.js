@@ -1,6 +1,6 @@
 import { Pattern, Rule } from './rule.js';
 import { Statement, Variable, Constant } from './statement.js';
-import * as Builtins from './builtins.js';
+import { builtins } from './builtins.js';
 
 export class Parser {
 
@@ -20,8 +20,6 @@ export class Parser {
     constructor(listener, logging) {
         this.listener = listener;
         this.logging = logging;
-
-        this.builtins = Object.keys(Builtins);
     }
 
     // (private)
@@ -38,11 +36,6 @@ export class Parser {
 
             case '?':
                 val = this.whileRe(/[a-zA-Z0-9_\-\.:]/);
-                if (val == '') {
-                    this.onError(`expecting variable name at char ${this.idx}`);
-                    return false;
-                }
-
                 break;
 
             case '.':
@@ -52,11 +45,15 @@ export class Parser {
                 if (/\s/.test(token))
                     return true;
 
-                val = this.whileNr();
+                if (/[0-9\.]/.test(token))
+                    val = this.collectNr();
+                else
+                    val = this.collectQName();
+
                 break;
         }
 
-        if (val == false)
+        if (val === false)
             return false;
 
         switch (token) {
@@ -119,11 +116,11 @@ export class Parser {
         if (!term.isConstant())
             return false;
 
-        return this.builtins.includes(term.unpacked());
+        return builtins[term.value] !== undefined;
     }
 
     getBuiltin(term) {
-        return Builtins[term.unpacked()];
+        return builtins[term.value];
     }
 
     // (overridden by subclasses)
@@ -137,6 +134,7 @@ export class Parser {
 
         for (this.idx++; this.idx < this.len; this.idx++) {
             const char = this.curChar();
+
             if (char != end)
                 str += char;
             else {
@@ -175,7 +173,7 @@ export class Parser {
         return str;
     }
 
-    whileNr() {
+    collectNr() {
         var str = "";
 
         var decimal = false;
@@ -198,6 +196,40 @@ export class Parser {
             } else
                 return this.unexpectedToken(char);
         }
+
+        this.onError(`unexpected EOF at char ${this.idx}`);
+        return false;
+    }
+
+    collectQName() {
+        var cur = "", ns = false;
+
+        for (; this.idx < this.len; this.idx++) {
+            const char = this.curChar();
+
+            if (char == ':') {
+                if (ns === false) {
+                    ns = cur;
+                    cur = "";
+                } else
+                    return this.unexpectedToken(char);
+
+            } else {
+                if (/[a-zA-Z0-9_\-\.]/.test(char))
+                    cur += char;
+                else if (char == ' ') {
+                    this.idx--;
+                    if (ns === false)
+                        return this.unexpectedToken(char);
+                    else
+                        return ns + ':' + cur;
+                } else
+                    return this.unexpectedToken(char);
+            }
+        }
+
+        this.onError(`unexpected EOF at char ${this.idx}`);
+        return false;
     }
 
     // (can be overridden by subclasses)
@@ -223,8 +255,8 @@ export class Parser {
     onError(msg) {
         if (this.listener)
             this.listener.error(msg);
-        else
-            console.error(msg);
+
+        console.error(msg);
     }
 }
 
@@ -388,7 +420,6 @@ export class RuleParser extends Parser {
             const cnstr = this.getBuiltin(p);
             // .. amazing that this works
             return new cnstr(s, o);
-
         } else
             return new Pattern(s, p, o);
     }

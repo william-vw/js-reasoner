@@ -19,7 +19,7 @@
 
         #output div.code {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .error {
@@ -29,6 +29,19 @@
         .header {
             font-size: 24px;
             font-weight: bold;
+        }
+
+        .subheader {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        td {
+            vertical-align: top;
+        }
+
+        td:nth-child(2) {
+            padding-left: 25px;
         }
 
     </style>
@@ -102,7 +115,7 @@
         }
 
         function logHeader(header) {
-            $("#output").append(`<br /><div class="header">${header}:</div>`);
+            $("#output").append(`<div class="header">${header}:</div>`);
         }
 
         function newline() {
@@ -111,7 +124,7 @@
 
         function logData(header, data) {
             const html =
-                `<br /><b>${header}</b>:<div class="code">${data.map(d => escapeHtml(d + "")).join("<br />")}</div>`;
+                `<br /><div class="subheader">${header}:</div><div class="code">${data.map(d => escapeHtml(d + "")).join("<br />")}</div>`;
             $("#output").append(html);
         }
 
@@ -124,16 +137,22 @@
 </head>
 
 <body onload="init()">
-    <h4>DATA</h4>
-    <textarea id="data" rows="8" cols="75"></textarea>
-    <br />
-    <h4>RULES</h4>
-    <textarea id="rules" rows="8" cols="75"></textarea>
-    <br />
-    <button id="run">run</button>
-    <br /><br />
-    <hr />
-    <div id="output"></div>
+    <table>
+        <tr>
+            <td>
+                <h4>DATA</h4>
+                <textarea id="data" rows="8" cols="75"></textarea>
+                <br />
+                <h4>RULES</h4>
+                <textarea id="rules" rows="8" cols="75"></textarea>
+                <br />
+                <button id="run">run</button>
+            </td>
+            <td>
+                <div id="output"></div>
+            </td>
+        </tr>
+    </table>
 </body>
 
 </html>

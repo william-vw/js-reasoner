@@ -225,8 +225,8 @@
         // enable debugging (true)
         const ruleParser = new RuleParser(null, false);
         const rules =
-            "{ ?x <p> ?y . } => { <test1> <type> <success> . }" +
-            "{ ?x <p> ?y . ?y <LT> 11 } => { <test2> <type> <success> . <test2> <output> ?z }";
+            "{ ?x :p ?y . } => { :test1 :type :success . }" +
+            "{ ?x :p ?y . ?y math:LT 11 } => { :test2 :type :success . :test2 :output ?z }";
         const parsedRules = ruleParser.parse(rules);
         console.log("parsed:");
         console.log(parsedRules.join("\n"));

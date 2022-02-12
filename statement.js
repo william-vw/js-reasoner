@@ -107,7 +107,7 @@ export class Term {
         console.error("must implement the Term class");
     }
 
-    unpacked() {
+    raw() {
         console.error("must implement the Term class");
     }
 }
@@ -136,7 +136,7 @@ export class Constant extends Term {
         return this.value;
     }
 
-    unpacked() {
+    raw() {
         if (this.value.startsWith('"') ||
             this.value.startsWith("<"))
 
@@ -172,7 +172,7 @@ export class Variable extends Term {
         return "?" + this.name + (this.idx !== undefined ? `(${this.idx})` : "");
     }
 
-    unpacked() {
+    raw() {
         return this.name;
     }
 }

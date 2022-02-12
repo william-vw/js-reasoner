@@ -98,12 +98,16 @@ export class Pattern extends Statement /* Clause */ {
 
 export class Builtin /* extends Clause */ {
 
+    name;
     type = ClauseTypes.BUILTIN;
     args;
 
-    constructor(args) {
+    constructor(args, ns) {
         // super(ClauseTypes.BUILTIN);
         this.args = args;
+        
+        const ln = this.constructor.name;
+        this.name = ns + ':' + ln;
     }
 
     evaluate(grounded, bindings) {
@@ -142,8 +146,8 @@ export class FunctionalBuiltin extends Builtin {
 
     fn;
 
-    constructor(args, fn) {
-        super(args);
+    constructor(args, fn, ns) {
+        super(args, ns);
 
         this.fn = fn;
     }
@@ -155,8 +159,8 @@ export class FunctionalBuiltin extends Builtin {
 
 export class MutatingBuiltin extends Builtin {
 
-    constructor(args) {
-        super(args);
+    constructor(args, ns) {
+        super(args, ns);
     }
 
     evaluate(ground, bindings) {
